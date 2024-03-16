@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 
 from Model.user import User
-from user_management import get_user_by_id, register_user, verify_password, get_user_by_username, create_user
+from user_management import get_user_by_id, register_user, verify_password, get_user_by_username,update_date_connection
 from datetime import datetime
 
 from db_init import create_database_connection
@@ -16,6 +16,9 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.user_loader(get_user_by_id)
 
+@login_manager.user_loader
+def load_user(user_id):
+    return get_user_by_id(connection, user_id)
 
 @app.route('/')
 def hello_world():
@@ -29,11 +32,11 @@ def register_u(connection, email, username, password, confirm_password, birth_da
         return redirect(url_for('register'))
 
     # Effectuez la validation et l'inscription de l'utilisateur
-   # if register_user(connection, email, username, password, birth_date):
-       # flash('Inscription réussie. Veuillez vous connecter.', 'success')
-       # return redirect(url_for('login'))
-    #else:
-       # flash('Nom d\'utilisateur ou adresse e-mail déjà pris. Veuillez en choisir un autre.', 'danger')
+    if register_user(connection, email, username,birth_date, password):
+        flash('Inscription réussie. Veuillez vous connecter.', 'success')
+        return redirect(url_for('login'))
+    else:
+       flash('Nom d\'utilisateur ou adresse e-mail déjà pris. Veuillez en choisir un autre.', 'danger')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -44,11 +47,7 @@ def register():
         confirm_password = request.form['confirm_password']
         birth_date =datetime.strptime(request.form.get('birth_date'), "%Y-%m-%d").date()
         print(email, username, password, confirm_password, birth_date)
-        user = User(email, username, birth_date, password, 0, None, 'user', 'inactive')
-        create_user(connection, user)
-        #register_u(connection, email, username, password, confirm_password, birth_date)
-        print(user)
-
+        register_u(connection, email, username, password, confirm_password, birth_date)
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -60,6 +59,7 @@ def login():
         if user and verify_password(user, password):
             login_user(user)
             flash('Connexion réussie.')
+            update_date_connection(connection, user)
             return redirect(url_for('profile'))
         else:
             flash('Nom d\'utilisateur ou mot de passe incorrect.')

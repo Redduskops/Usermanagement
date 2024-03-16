@@ -1,22 +1,26 @@
-from datetime import datetime
+import datetime
 
 from flask_login import UserMixin
 from bcrypt import hashpw
 
 
 class User(UserMixin):
-    def __init__(self, email, username, birth_date, password_hash, age, profile_photo, user_type, status):
+    def __init__(self, id, email, username,password_hash , age, profile_photo, user_type, status, verified):
+        #if not isinstance(birth_date, datetime.date):
+            #raise ValueError("date de naissance doit être une date")
+
         if not isinstance(age, int):
             raise ValueError("age doit être un entier")
 
+        self.id=id
         self.email = email
         self.username = username
-        self.birth_date = birth_date
         self.age = age
         self.password_hash = password_hash
         self.profile_photo = profile_photo
         self.role = user_type
         self.status = status
+        self.verified = verified
 
     def verify_password(self, password):
         return hashpw(password.encode('utf-8'), self.password_hash.encode('utf-8')) == self.password_hash.encode(

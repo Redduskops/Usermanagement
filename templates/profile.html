@@ -5,4 +5,16 @@
 {% block content %}
     <h1>Profil Utilisateur </h1>
     <!-- Formulaire d'inscription -->
+    <body>
+    <h1>Profile</h1>
+    <p><strong>Username:</strong> {{ user.username }}</p>
+    <p><strong>Email:</strong> {{ user.email }}</p>
+    <p><strong>Age:</strong> {{ user.age }}</p>
+    <p><strong>Password Hash:</strong> {{ user.password_hash }}</p>
+    <p><strong>Profile Photo:</strong> {{ user.profile_photo }}</p>
+    <p><strong>User Type:</strong> {{ user.role }}</p>
+    <p><strong>Status:</strong> {{ user.status }}</p>
+    <p><strong>Verified:</strong> {{ user.verified }}</p>
+    <!-- Ajoutez d'autres informations de l'utilisateur ici -->
+</body>
 {% endblock %}
