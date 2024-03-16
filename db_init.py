@@ -128,8 +128,7 @@ def create_database(database_name):
     connection = mysql.connector.connect(
         host=host,
         user=user,
-        password=password,
-        database=database
+        password=password
     )
     cursor = connection.cursor()
     cursor.execute("CREATE DATABASE IF NOT EXISTS  {}".format(database))

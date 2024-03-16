@@ -30,23 +30,27 @@ def get_user_by_email(connexion, email):
 
 def get_user_by_username(connection, username):
     cursor = connection.cursor()
-    query = "SELECT * FROM user WHERE username = %s"
+    query = "SELECT id, email, username,password_hash,age, profile_photo, user_type, status, verified FROM user WHERE username = %s"
     cursor.execute(query, (username,))
     user_data = cursor.fetchone()
     cursor.close()
     if user_data:
-        return User(*user_data)
+        id, email, username,password_hash, age, profile_photo, user_type, status, verified = user_data
+        return User(id=id, email=email, username=username, password_hash=password_hash ,age=age, profile_photo=profile_photo, user_type=user_type, status=status, verified=verified)
     return None
+
 
 def get_user_by_id(connection, user_id):
     cursor = connection.cursor()
-    query = "SELECT * FROM user WHERE id = %s"
+    query = "SELECT id, email, username,password_hash, age, profile_photo, user_type, status, verified FROM user WHERE id = %s"
     cursor.execute(query, (user_id,))
     user_data = cursor.fetchone()
     cursor.close()
     if user_data:
-        return User(*user_data)
+        id, email, username,password_hash, age, profile_photo, user_type, status, verified = user_data
+        return User(id=id, email=email, username=username, password_hash=password_hash, age=age, profile_photo=profile_photo, user_type=user_type, status=status, verified=verified)
     return None
+
 
 
 # Autres fonctions pour récupérer, mettre à jour et supprimer des utilisateurs
@@ -102,5 +106,13 @@ def validate_user_data(email, username, birth_date, password_hash, age, user_typ
         raise ValueError("status doit être 'active' ou 'inactive'")
 
 
-def hash_password(password):
+def decode_password(password):
     return hashpw(password.encode('utf-8'), gensalt()).decode('utf-8')
+
+def update_date_connection(connection, user):
+        cursor = connection.cursor()
+        update_query = "UPDATE user SET Connected_at = NOW() WHERE username = %s"
+        cursor.execute(update_query, (user.username,))
+        connection.commit()
+        cursor.close()
+        print("date de connection mis à jour")

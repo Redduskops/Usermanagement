@@ -4,5 +4,16 @@
 
 {% block content %}
     <h1>Se Connecter </h1>
-    <!-- Formulaire d'inscription -->
+    <!-- Formulaire de connection -->
+
+     <form method="post" action="{{ url_for('login') }}">
+        <label for="username">Nom d'utilisateur:</label>
+        <input type="text" id="username" name="username" required>
+        <br>
+        <label for="password">Mot de passe:</label>
+        <input type="password" id="password" name="password" required>
+      <button type="submit">Se connecter </button>
+    </form>
+
+
 {% endblock %}
