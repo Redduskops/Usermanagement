@@ -1,0 +1,11 @@
+    Validation des formulaires d'inscription : Assurez-vous de valider les champs du formulaire d'inscription côté serveur pour éviter les attaques par injection SQL et les erreurs de données. Vous pouvez utiliser des outils comme WTForms pour cela.
+
+    Mot de passe sécurisé : Vous pouvez renforcer la sécurité des mots de passe en utilisant des règles de complexité plus strictes. Par exemple, exiger une longueur minimale, des caractères spéciaux et des lettres majuscules et minuscules.
+
+    Protection contre les attaques de force brute : Mettez en œuvre des mécanismes de protection contre les attaques de force brute en limitant le nombre de tentatives de connexion et en utilisant des solutions comme Flask-Limiter.
+
+    Stockage sécurisé des mots de passe : Assurez-vous de stocker les mots de passe de manière sécurisée en utilisant des algorithmes de hachage sécurisés comme bcrypt. Vous l'utilisez déjà, ce qui est une bonne pratique.
+
+    Gestion des erreurs et des exceptions : Gérez correctement les erreurs et les exceptions pour fournir une expérience utilisateur fluide et sécurisée.
+
+    Tests unitaires et tests d'intégration : Écrivez des tests pour votre application afin de vérifier son bon fonctionnement et sa sécurité. Cela vous aidera à identifier et à corriger les erreurs plus rapidement.

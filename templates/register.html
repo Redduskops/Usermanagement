@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Inscription{% endblock %}
+
+{% block content %}
+    <h1>Inscription</h1>
+    <!-- Formulaire d'inscription -->
+
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <ul>
+        {% for message in messages %}
+        <li class="alert alert-danger">{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% endwith %}
+    <form method="post" action="{{ url_for('register') }}">
+        <label for="email">email</label>
+        <input type="text" id="email" name="email" required>
+        <br>
+        <label for="username">Nom d'utilisateur:</label>
+        <input type="text" id="username" name="username" required>
+        <br>
+        <label for="password">Mot de passe:</label>
+        <input type="password" id="password" name="password" required>
+        <br>
+         <label for="password">Confirmation de Mot de passe:</label>
+        <input type="password" id="confirm_password" name="confirm_password" required>
+        <br>
+         <input type="date" id="birth_date" name="birth_date" required>
+        <br>
+        <button type="submit">S'inscrire</button>
+    </form>
+{% endblock %}

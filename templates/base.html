@@ -1,10 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
 </head>
 <body>
-$END$
+    <header>
+        <!-- Contenu de l'en-tête -->
+    </header>
+    <nav>
+        <!-- Ajoutez ici votre barre de navigation si vous en avez une -->
+        <ul>
+            <li><a href="/">Accueil</a></li>
+            <li><a href="/register">Inscription</a></li>
+            <li><a href="/login">Connexion</a></li>
+            <!-- Ajoutez d'autres liens de navigation selon votre application -->
+        </ul>
+    </nav>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <!-- Contenu du pied de page -->
+    </footer>
 </body>
 </html>
