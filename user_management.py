@@ -5,13 +5,16 @@ from Model.user import User
 import datetime
 import re
 
+from db_init import create_database_connection
+
+connection = create_database_connection()
 
 def create_user(connection, user):
     cursor = connection.cursor()
     query = ("INSERT INTO user (email, username, birth_date, password_hash, profile_photo, user_type, status) VALUES ("
              "%s, %s, %s, %s, %s, %s, %s)")
     values = (
-        user.email, user.username, user.birth_date, user.password_hash, user.profile_photo, user.role, user.status)
+        user.email, user.username, user.birth_date, user.password_hash, user.profile_photo, user._role, user._status)
     cursor.execute(query, values)
     connection.commit()
     cursor.close()
@@ -19,48 +22,55 @@ def create_user(connection, user):
 
 def get_user_by_email(connexion, email):
     cursor = connexion.cursor()
-    query = "SELECT * FROM user WHERE email = %s"
+    query = "SELECT id, email, username FROM user WHERE email = %s"
     cursor.execute(query, (email,))
     user_data = cursor.fetchone()
     cursor.close()
     if user_data:
-        return User(*user_data)
+        id, email, username = user_data
+        return User(email=email, username=username,user_id=id)
     return None
 
 
 def get_user_by_username(connection, username):
     cursor = connection.cursor()
-    query = "SELECT * FROM user WHERE username = %s"
+    query = "SELECT id, email, username,password_hash,age, profile_photo, user_type, status, verified FROM user WHERE username = %s"
     cursor.execute(query, (username,))
     user_data = cursor.fetchone()
     cursor.close()
     if user_data:
-        return User(*user_data)
+        id, email, username,password_hash, profile_photo, user_type, status, verified = user_data
+        return User(email=email, username=username, user_id=id, password_hash=password_hash,
+                    profile_photo=profile_photo, user_type=user_type, status=status, verified=verified)
     return None
+
 
 def get_user_by_id(connection, user_id):
     cursor = connection.cursor()
-    query = "SELECT * FROM user WHERE id = %s"
+    query = "SELECT id, email, username, age, profile_photo, user_type, status, verified FROM user WHERE id = %s"
     cursor.execute(query, (user_id,))
     user_data = cursor.fetchone()
     cursor.close()
+    print(user_data)  # Imprimer les données récupérées pour le débogage
     if user_data:
-        return User(*user_data)
+        id, email, username, profile_photo, user_type, status, verified = user_data
+        return User(user_id=id, email=email, username=username, profile_photo=profile_photo, user_type=user_type, status=status, verified=verified)
     return None
+
+
 
 
 # Autres fonctions pour récupérer, mettre à jour et supprimer des utilisateurs
 
 def register_user(connection, email, username, birth_date, password):
     # Vérifiez si l'utilisateur existe déjà
-    if get_user_by_email(connection, email) or get_user_by_username(connection, username):
+    if get_user_by_username(connection, username):
         return False  # L'utilisateur existe déjà
 
     # Hash du mot de passe
-    password_hash = hash_password(password)
 
     # Créer un objet User
-    user = User(email, username, birth_date, password_hash, 0, None, 'user', 'inactive')
+    user = User(email = email, username=username, birth_date=birth_date, password_hash=password)
 
     # Ajouter l'utilisateur à la base de données
     create_user(connection, user)
@@ -102,5 +112,14 @@ def validate_user_data(email, username, birth_date, password_hash, age, user_typ
         raise ValueError("status doit être 'active' ou 'inactive'")
 
 
-def hash_password(password):
+def decode_password(password):
     return hashpw(password.encode('utf-8'), gensalt()).decode('utf-8')
+
+def update_date_connection(connection, user):
+        cursor = connection.cursor()
+        update_query = "UPDATE user SET Connected_at = NOW() WHERE username = %s"
+        cursor.execute(update_query, (user.username,))
+        connection.commit()
+        cursor.close()
+        print("date de connection mis à jour")
+
