@@ -14,7 +14,7 @@ def create_user(connection, user):
     query = ("INSERT INTO user (email, username, birth_date, password_hash, profile_photo, user_type, status) VALUES ("
              "%s, %s, %s, %s, %s, %s, %s)")
     values = (
-        user.email, user.username, user.birth_date, user.password_hash, user.profile_photo, user._role, user._status)
+        user.email, user.username, user.birth_date, user._password_hash, user.profile_photo, user._role, user._status)
     cursor.execute(query, values)
     connection.commit()
     cursor.close()

@@ -1,20 +1,26 @@
 import datetime
 import re
-
 from flask_login import UserMixin
 from bcrypt import hashpw
 
+from Model.password import Password, NiveauMotDePasse
+
+
+class EmailError(Exception):
+    pass
+
 
 class User(UserMixin):
-    def __init__(self, email, username, user_id=0, birth_date=None, password_hash="", profile_photo="default.jpg",
-                 user_type="user", status="inactive", verified=0):
+    def __init__(self, email, username, user_id=0, birth_date=None, password=None, profile_photo="default.jpg",
+                 user_type="user", status="inactive", verified=0, ):
+        self.password_hash = None
         self._id = user_id
         self._email = email
         self._username = username
         self._birth_date = birth_date
-        self._password_hash = password_hash
+        self._password = password if password is None else Password(password, NiveauMotDePasse.EXCELLENT)
         self._profile_photo = profile_photo
-        self._role = user_type
+        self._user_type = user_type
         self._status = status
         self._verified = verified
 
@@ -24,13 +30,12 @@ class User(UserMixin):
                 f"Email: {self.email}\n"
                 f"Username: {self.username}\n"
                 f"Age: {self.age}\n"
-                f"Birth Date: {self.birth_date}\n"
+                f"Birth Date: {self.birth_date.strftime('%Y-%m-%d')}\n"  # Conversion en str
                 f"Password Hash: {self.password_hash}\n"
                 f"Profile Photo: {self.profile_photo}\n"
-                f"Role: {self._role}\n"
-                f"Status: {self._status}\n"
+                f"User Type: {self._user_type}\n"  
+                f"Status: {self.status}\n"        
                 f"Verified: {self.verified}")
-
 
     @classmethod
     def create(cls, email, username):
@@ -45,14 +50,19 @@ class User(UserMixin):
         if not isinstance(value, int):
             raise ValueError("ID must be an integer")
         self._id = value
+
     @property
     def email(self):
         return self._email
 
     @email.setter
     def email(self, value):
-        self._email = self._validate_email(value)
-
+        try:
+            self._validate_email(value)
+        except EmailError as e:
+            print(f"Erreur de validation de l'email : {e}")
+            return
+        self._email = value
     @property
     def username(self):
         return self._username
@@ -84,6 +94,7 @@ class User(UserMixin):
         if value not in ("active", "inactive", "suspended"):
             raise ValueError("Invalid status. Must be one of: active, inactive, suspended")
         self._status = value
+
     @property
     def age(self):
         # Calculer l'âge à partir de la date de naissance
@@ -126,11 +137,9 @@ class User(UserMixin):
     @staticmethod
     def _validate_email(email):
         if not isinstance(email, str):
-            raise ValueError("Email must be a string")
+            raise EmailError("Email must be a string")
         if not re.match(r'^[\w\.-]+@[\w\.-]+$', email):
-            raise ValueError("Invalid email format")
-        return email
-
+            raise EmailError("Invalid email format")
     @staticmethod
     def _validate_username(username):
         if not isinstance(username, str):
@@ -139,20 +148,17 @@ class User(UserMixin):
             raise ValueError("Invalid username format")
         return username
 
-
-
     @staticmethod
     def validate_date(date_string):
         if date_string is not None:
             if isinstance(date_string, datetime.date):
-                # Convertir datetime.date en chaîne de caractères au format 'YYYY-MM-DD'
-                date_string = date_string.strftime('%Y-%m-%d')
+                # Pas besoin de conversion, date_string est déjà un objet date
+                return date_string
             try:
-                # Tentative de création d'un objet date à partir de la chaîne
+                # Convertir la chaîne en objet date
                 date_obj = datetime.datetime.strptime(date_string, '%Y-%m-%d').date()
                 return date_obj
             except ValueError:
-                # Si la chaîne n'est pas une date valide
                 raise ValueError("La date n'est pas valide.")
         else:
             return None
@@ -162,18 +168,17 @@ class User(UserMixin):
             'utf-8')
 
     def is_admin(self):
-        return self._role == 'administrator'
+        return self._user_type == 'admin'  # Utilisation de _user_type
 
     def is_moderator(self):
-        return self._role == 'moderator'
+        return self._user_type == 'moderator'  # Utilisation de _user_type
+
+    def can_edit_post(self):
+        return self.is_admin() or self.is_moderator()  # Utilisation de is_admin() et is_moderator()
+
 
     def is_active(self):
         return self._status == 'active'
-
-    def can_edit_post(self):
-        return self.is_admin() or self.is_moderator()
-
-
 
     def __repr__(self):
         return f"<User id={self.id}, email='{self.email}', username='{self.username}'>"
