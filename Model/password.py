@@ -17,19 +17,23 @@ class PasswordError(Exception):
 
 class Password:
     def __init__(self, password=None, niveau=NiveauMotDePasse.ACCEPTABLE, save_to_database=True):
-        self._password_hash = None
+        self._password = None
         self._niveau = None
         self._valide = False
         self._encrypted = False  # Par défaut, le mot de passe n'est pas encore encrypté
-        self._save_to_database = save_to_database  # Mode d'utilisation : True pour enregistrer dans la base de données, False pour juste charger les données
+        self._save_to_database = save_to_database  # Mode d'utilisation : True pour enregistrer dans la base de
+        # données, False pour juste charger les données
         if password is not None:
-            self.set_password(password)
+            if isinstance(password, str):
+                self.set_password(password)
+            else:
+                raise ValueError("Le mot de passe doit être une chaîne de caractères ou une valeur cryptée")
         else:
             self.generate_password(niveau)
 
     @property
-    def password_hash(self):
-        return self._password_hash
+    def password(self):
+        return self._password
 
     @property
     def niveau(self):
@@ -47,12 +51,14 @@ class Password:
     def save_to_database(self):
         return self._save_to_database
 
-    @password_hash.setter
-    def password_hash(self, value):
-        if not isinstance(value, str):
-            raise ValueError("Le mot de passe doit être une chaîne de caractères")
-        self._validate_password(value)
-        self._password = value
+    @password.setter
+    def password(self, value):
+        if value is None:
+            self._password = None
+        elif isinstance(value, str):
+            self._password = value
+        else:
+            raise ValueError("Le mot de passe doit être une instance de la classe str")
 
     @niveau.setter
     def niveau(self, value):
@@ -79,8 +85,8 @@ class Password:
         self._save_to_database = value
 
     def __str__(self):
-        if self.password_hash:
-            return f"Mot de passe chiffré : {self.password_hash}"
+        if self.password:
+            return f"{self.password}"
         else:
             return "Mot de passe non défini"
 
@@ -108,53 +114,54 @@ class Password:
                 if niveau == NiveauMotDePasse.EXCELLENT:
                     if self.has_similar_characters(password):
                         continue  # Re-générer le mot de passe s'il contient des caractères similaires consécutifs
-                return password, niveau, length  # Retourne le mot de passe dès qu'il satisfait tous les critères
+                return password  # Retourne le mot de passe dès qu'il satisfait tous les critères
 
-    def _validate_password(self, password):
+    def _validate_password(self, passw):
         # Vérification de la présence de caractères majuscules, minuscules, chiffres et spéciaux
-        if re.search(r'[A-Z]', password) and re.search(r'[a-z]', password) \
-                and re.search(r'\d', password) and re.search(r'[!@#$%^&*()-=_+]', password):
+        if re.search(r'[A-Z]', passw) and re.search(r'[a-z]', passw) \
+                and re.search(r'\d', passw) and re.search(r'[!@#$%^&*()-=_+]', passw):
             # Vérification de la longueur du mot de passe
-            if 8 <= len(password) <= 14:
-                self._niveau = NiveauMotDePasse.ACCEPTABLE
-                self._valide = True
+            if 8 <= len(passw) <= 14:
+                self.niveau = NiveauMotDePasse.ACCEPTABLE
+                self.valide = True
                 return True
 
-            if len(password) > 14:
+            if len(passw) > 14:
                 # Vérification de la présence de caractères consécutifs répétés
-                has_repeated_chars = any(password[i] == password[i + 1] for i in range(len(password) - 1))
+                has_repeated_chars = any(passw[i] == passw[i + 1] for i in range(len(passw) - 1))
                 if not has_repeated_chars:
-                    self._niveau = NiveauMotDePasse.EXCELLENT
-                    self._valide = True
+                    self.niveau = NiveauMotDePasse.EXCELLENT
+                    self.valide = True
                     return True
                 else:
-                    self._niveau = NiveauMotDePasse.ACCEPTABLE
-                    self._valide = True
+                    self.niveau = NiveauMotDePasse.ACCEPTABLE
+                    self.valide = True
                     return True
         return False
 
     def set_password(self, new_password):
-        # Vérification de la validité du nouveau mot de passe
-        self._validate_password(new_password)
-
-        # Si le nouveau mot de passe est valide
-        if self._valide:
-            if self._save_to_database:
-                self._password_hash = self.hash_password(new_password)
-                self._encrypted = True
+        if isinstance(new_password, str):
+            self._validate_password(new_password)
+            if self.valide:
+                if self.save_to_database:
+                    self._password = self.hash_password(new_password)
+                    self._encrypted = True
+                else:
+                    self._password = new_password
+                    self._encrypted = True
             else:
-                self._password_hash = new_password
-                self._encrypted = False
+                raise PasswordError("Le nouveau mot de passe n'est pas valide")
         else:
-            raise PasswordError("Le nouveau mot de passe n'est pas valide")
+            raise ValueError("Le mot de passe doit être une chaîne de caractères ou une valeur cryptée")
 
     def check_password_strength(self, password):
         self._validate_password(password)
-        return self._niveau, self._valide, password
+        return self.niveau, self.valide, password
+
     @staticmethod
     def hash_password(password):
         salt = bcrypt.gensalt()
-        hashed_passwordo = bcrypt.hashpw(password.encode('utf-8'), salt)
+        hashed_passwordo = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
         return hashed_passwordo
 
     @staticmethod
@@ -168,3 +175,10 @@ class Password:
     def verify_password(plain_password, hashed_password):
         return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password)
 
+    # Ajout d'une méthode pour vérifier si un mot de passe est basique
+    def is_basic_password(self):
+        return self._niveau == NiveauMotDePasse.BASIQUE
+
+    @staticmethod
+    def is_encrypted_password(password):
+        return isinstance(password, bytes)
