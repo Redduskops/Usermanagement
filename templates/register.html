@@ -16,20 +16,33 @@
     {% endif %}
     {% endwith %}
     <form method="post" action="{{ url_for('register') }}">
-        <label for="email">email</label>
-        <input type="text" id="email" name="email" required>
+        <label for="email">Email:</label>
+        <input type="text" id="email" name="email" value="{{ request.form.email }}" required>
         <br>
         <label for="username">Nom d'utilisateur:</label>
-        <input type="text" id="username" name="username" required>
+        <input type="text" id="username" name="username" value="{{ request.form.username }}" required>
         <br>
         <label for="password">Mot de passe:</label>
         <input type="password" id="password" name="password" required>
+        <input type="checkbox" onclick="togglePasswordVisibility()"> Afficher le mot de passe
         <br>
-         <label for="password">Confirmation de Mot de passe:</label>
+        <label for="confirm_password">Confirmation de Mot de passe:</label>
         <input type="password" id="confirm_password" name="confirm_password" required>
         <br>
-         <input type="date" id="birth_date" name="birth_date" required>
+        <label for="birth_date">Date de naissance:</label>
+        <input type="date" id="birth_date" name="birth_date" value="{{ request.form.birth_date }}" required>
         <br>
         <button type="submit">S'inscrire</button>
     </form>
 {% endblock %}
+
+<script>
+    function togglePasswordVisibility() {
+        var passwordInput = document.getElementById("password");
+        if (passwordInput.type === "password") {
+            passwordInput.type = "text";
+        } else {
+            passwordInput.type = "password";
+        }
+    }
+</script>

@@ -20,6 +20,7 @@ class Password:
         self._password = None
         self._niveau = None
         self._valide = False
+        self._erreur = ""
         self._encrypted = False  # Par défaut, le mot de passe n'est pas encore encrypté
         self._save_to_database = save_to_database  # Mode d'utilisation : True pour enregistrer dans la base de
         # données, False pour juste charger les données
@@ -117,6 +118,8 @@ class Password:
                 return password  # Retourne le mot de passe dès qu'il satisfait tous les critères
 
     def _validate_password(self, passw):
+        self.niveau = NiveauMotDePasse.BASIQUE
+        self.valide = False
         # Vérification de la présence de caractères majuscules, minuscules, chiffres et spéciaux
         if re.search(r'[A-Z]', passw) and re.search(r'[a-z]', passw) \
                 and re.search(r'\d', passw) and re.search(r'[!@#$%^&*()-=_+]', passw):
@@ -139,20 +142,26 @@ class Password:
                     return True
         return False
 
+
+
     def set_password(self, new_password):
         if isinstance(new_password, str):
+            a= False
             self._validate_password(new_password)
             if self.valide:
+                a=True
                 if self.save_to_database:
-                    self._password = self.hash_password(new_password)
-                    self._encrypted = True
+                    self.password = self.hash_password(new_password)
+                    self.encrypted = True
                 else:
-                    self._password = new_password
-                    self._encrypted = True
+                    self.password = new_password
+                    self.encrypted = True
             else:
-                raise PasswordError("Le nouveau mot de passe n'est pas valide")
+                self.password = new_password
+                self.encrypted = False
         else:
             raise ValueError("Le mot de passe doit être une chaîne de caractères ou une valeur cryptée")
+        return a
 
     def check_password_strength(self, password):
         self._validate_password(password)
@@ -172,8 +181,8 @@ class Password:
         return False
 
     @staticmethod
-    def verify_password(plain_password, hashed_password):
-        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password)
+    def verify_password(plain_password, self):
+        return bcrypt.checkpw(plain_password.encode('utf-8'), self.password.encode('utf-8'))
 
     # Ajout d'une méthode pour vérifier si un mot de passe est basique
     def is_basic_password(self):

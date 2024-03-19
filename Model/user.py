@@ -74,23 +74,31 @@ Méthodes:
 12. Les autres méthodes sont des getters et des setters pour les attributs de la classe User.
 """
 
+
 class User(UserMixin):
     def __init__(self, email=None, username=None, user_id=0, birth_date=None, password=None, profile_photo="default.jpg",
-                 user_type="user", status="inactive", verified=False, mode=True):
+                 user_type="user", status="inactive", verified=False, mode=True, user_valide=False):
+        assert isinstance(email, (str, type(None))), "Email must be an instance of Email class or None"
+        assert isinstance(username, (str, type(None))), "Username must be a string or None"
+        assert isinstance(user_id, int), "User ID must be an integer"
+        assert isinstance(birth_date, (datetime.date, type(None))), "Birth date must be a datetime.date object or None"
+
         self._id = user_id
-        self._email = self._validate_email(email)
         self._username = username
+        self._email = Email(email) if isinstance(email, str) else email
         self._birth_date = birth_date
-        self.password = Password(password, save_to_database=False if mode is False else True) if password is not None else None
+        self._password = Password(password, save_to_database=False if mode is False else True) if password is not None else None
         self._profile_photo = profile_photo
         self._user_type = user_type
         self._status = status
         self._verified = verified
+        self._user_valide = self.validate_save_to_database()
+
 
     def __str__(self):
         return (f"User Information:\n"
                 f"ID: {self.id}\n"
-                f"Email: {self.email.value}\n"
+                f"Email: {self.email.value if self.email is not None else None }\n"
                 f"Username: {self.username}\n"
                 f"Age: {self.age if self.birth_date is not None else None}\n"
                 f"Birth Date: {self.birth_date.strftime('%Y-%m-%d') if self.birth_date is not None else None}\n" # Conversion en str
@@ -125,14 +133,12 @@ class User(UserMixin):
     @password.setter
     def password(self, value):
         if value is None:
-            self._password = None
+            self.password = None
         elif isinstance(value, Password):
-            self._password = value
+            self.password = value
         elif isinstance(value, str):
             new_password = Password(value)
-            if new_password.niveau == NiveauMotDePasse.BASIQUE:
-                raise ValueError("Le niveau de sécurité du mot de passe est trop bas.")
-            self._password = new_password
+            self.password = new_password
         else:
             raise ValueError("Le mot de passe doit être une instance de la classe Password ou une chaîne de caractères")
 
@@ -220,6 +226,14 @@ class User(UserMixin):
             raise ValueError("Invalid value for verified. Must be a boolean or 0 or 1.")
 
 
+    @property
+    def user_valide(self):
+        return self._user_valide
+
+    @user_valide.setter
+    def user_valide(self, value):
+        self._user_valide = value
+
     @staticmethod
     def _validate_username(username):
         if not isinstance(username, str):
@@ -244,16 +258,16 @@ class User(UserMixin):
             return None
 
     def is_admin(self):
-        return self._user_type == 'admin'  # Utilisation de _user_type
+        return self.role == 'admin'  # Utilisation de _user_type
 
     def is_moderator(self):
-        return self._user_type == 'moderator'  # Utilisation de _user_type
+        return self.role == 'moderator'  # Utilisation de _user_type
 
     def can_edit_post(self):
         return self.is_admin() or self.is_moderator()  # Utilisation de is_admin() et is_moderator()
 
     def is_active(self):
-        return self._status == 'active'
+        return self.status == 'active'
 
     def generate_and_set_password(self, niveau=NiveauMotDePasse.ACCEPTABLE):
 
@@ -274,30 +288,13 @@ class User(UserMixin):
         return m1
 
     def save_to_database(self):
-        if self.email is None or self.username is None:
-            raise ValueError("User must have an email and a username to be saved to the database")
+        if not self.validate_save_to_database():
+            return False
 
-        # Valider les données avant l'insertion dans la base de données
-        if not self.validate_data:
-            return False  # La validation a échoué, retourner False
-
-        # Vérifier si un utilisateur avec le même nom d'utilisateur existe déjà
-        existing_user = User.get_user_by_username(create_database_connection(), self.username)
+        existing_user = self.user_exists(create_database_connection(), username=self.username, email=self.email.value)
         if existing_user:
             return False
 
-        # Vérifier si un utilisateur avec le même email existe déjà
-        existing_user = User.get_user_by_email(create_database_connection(), self.email.value)
-        if existing_user:
-            return False
-
-        # Générer un mot de passe aléatoire si aucun n'a été fourni
-        if self.password is None:
-            password = Password().generate_password()
-        else:
-            password = self.password
-
-        # Insertion des données dans la base de données
         connection = create_database_connection()
         cursor = connection.cursor()
         query = (
@@ -307,13 +304,14 @@ class User(UserMixin):
         values = (
             self.email.value, self.username,
             datetime.date.today() if self.birth_date is None else self.birth_date,
-            password.password, self.profile_photo,
+            self.password.password, self.profile_photo,
             self.role, self.status, self.verified
         )
         cursor.execute(query, values)
         connection.commit()
         cursor.close()
-        return True  # Succès de l'insertion
+        return True
+
 
     @staticmethod
     def get_user_by_username(connection, username):
@@ -362,37 +360,58 @@ class User(UserMixin):
         cursor.close()
         print("date de connection mis à jour")
 
-    @property
-    def validate_data(self):
-        if not self.email :
-            return False
-        if not self.username:
-            return False
-        if not self.password:
-            return False
-        if not self.birth_date:
-            return False
+    def validate_save_to_database(self):
+        # Vérifier si l'email est valide
+        if self.email is None:
+            raise ValueError("Email is required")
         if not isinstance(self.email, Email):
-            return False
+            raise ValueError("Email must be an instance of Email class")
+        if not self.email.valide:
+            raise ValueError("email is not an correct email")
 
+        # Vérifier si le nom d'utilisateur est valide
+        if not self.username:
+            raise ValueError("Username is required")
         if len(self.username) < 3:
-            return False
+            raise ValueError("Username must be at least 3 characters long")
 
+        # Vérifier si le mot de passe est valide
+        if not self.password:
+            raise ValueError("Password is required")
+        if not isinstance(self.password, Password):
+            raise ValueError("Password must be an instance of password class")
+        if not self.password.valide:
+            raise ValueError("Password is not strong enough")
+
+        # Vérifier si la date de naissance est valide
+        if not self.birth_date:
+            raise ValueError("Birth date is required")
         if not isinstance(self.birth_date, datetime.date):
-            return False
+            raise ValueError("Birth date must be a datetime.date object")
 
-        if self.password and not isinstance(self.password, Password):
-            return False
+        # Vérifier si le chemin de la photo de profil est valide
         if not isinstance(self.profile_photo, str) or self.profile_photo is None:
-            return False
-        if not isinstance(self.verified, bool):
-            return False
-        if self.role not in ("user", "admin", "moderator"):
-            return False
-        if self.status not in ("active", "inactive", "suspended"):
-            return False
+            raise ValueError("Profile photo must be a string")
 
-        # Si toutes les validations réussissent, retournez True
+        # Vérifier si le statut est valide
+        if self.status not in ("active", "inactive", "suspended"):
+            raise ValueError("Invalid status. Must be one of: active, inactive, suspended")
+
+        # Vérifier si le type d'utilisateur est valide
+        if self.role not in ("user", "admin", "moderator"):
+            raise ValueError("Invalid user_type. Must be one of: user, admin, moderator")
+
         return True
+
+    @staticmethod
+    def user_exists(connection, username, email):
+        cursor = connection.cursor()
+        query = "SELECT COUNT(*) FROM user WHERE username = %s OR email = %s"
+        cursor.execute(query, (username, email))
+        count = cursor.fetchone()[0]
+        cursor.close()
+        return count > 0
+
     def __repr__(self):
         return f"<User id={self.id}, email='{self.email}', username='{self.username}'>"
+

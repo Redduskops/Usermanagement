@@ -1,4 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+import os
+
+from dotenv import load_dotenv
+from flask import Flask, render_template, request, redirect, url_for, flash, make_response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 
 from Model.user import User
@@ -8,10 +11,14 @@ from datetime import datetime
 from db_init import create_database_connection
 
 connection = create_database_connection()
-
+load_dotenv()
+database = os.environ.get('DB_NAME')
 app = Flask(__name__)
 app.secret_key = 'ZROMqZPkvExSOKnWO19pEA'
 
+app.config.update(
+    DATABASE_URL=database,
+    DEBUG=True)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.user_loader(get_user_by_id)
@@ -33,7 +40,7 @@ def register_u(connection, email, username, password, confirm_password, birth_da
        # flash('Inscription réussie. Veuillez vous connecter.', 'success')
        # return redirect(url_for('login'))
     #else:
-       # flash('Nom d\'utilisateur ou adresse e-mail déjà pris. Veuillez en choisir un autre.', 'danger')
+       # flash('Nom d\'utilisateur ou adresse e-mail déjà pris. Veuillez en choisir un autre.', 'danger'
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -42,15 +49,41 @@ def register():
         username = request.form['username']
         password = request.form['password']
         confirm_password = request.form['confirm_password']
-        birth_date =datetime.strptime(request.form.get('birth_date'), "%Y-%m-%d").date()
-        print(email, username, password, confirm_password, birth_date)
-        user = User(email, username, birth_date, password, 0, None, 'user', 'inactive')
-        create_user(connection, user)
-        #register_u(connection, email, username, password, confirm_password, birth_date)
-        print(user)
+        birth_date = datetime.strptime(request.form.get('birth_date'), "%Y-%m-%d").date()
 
-    return render_template('register.html')
+        # Vérifiez si le mot de passe et sa confirmation correspondent
+        if password != confirm_password:
+            flash('Les mots de passe ne correspondent pas.', 'danger')
+            return render_template('register.html', email=email, username=username, birth_date=birth_date), 422
 
+        # Validez les données du formulaire
+        try:
+            user_test = User(email=email, username=username, birth_date=birth_date, password=password)
+        except ValueError as e:
+            flash(str(e), 'danger')
+            return render_template('register.html', email=email, username=username, birth_date=birth_date), 422
+
+        # Vérifiez si l'utilisateur existe déjà dans la base de données
+        connection = create_database_connection()
+        if User.user_exists(connection, user_test.username, user_test.email.value):
+            flash('Nom d\'utilisateur ou adresse e-mail déjà pris. Veuillez en choisir un autre.', 'danger')
+            return render_template('register.html', email=email, username=username, birth_date=birth_date), 422
+
+        # Créez une instance de la classe User
+        if user_test.user_valide:
+            # Enregistrez l'utilisateur dans la base de données
+            if user_test.save_to_database():
+                flash('Inscription réussie. Veuillez vous connecter.', 'success')
+                return redirect(url_for('login')), 200
+            else:
+                flash('Erreur lors de l\'enregistrement de l\'utilisateur.', 'danger')
+                return render_template('register.html', email=email, username=username, birth_date=birth_date), 500
+        else:
+            flash('Veuillez fournir des informations utilisateur valides.', 'danger')
+            return render_template('register.html', email=email, username=username, birth_date=birth_date), 422
+
+    # Si la méthode n'est pas POST, renvoyer une erreur 405 (Method Not Allowed)
+    return make_response(render_template('register.html'), 405, [("Error", "pas une requete POST")])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -82,3 +115,10 @@ def profile():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+def config():
+    return {'TESTING': True}
+
+def test_client():
+    return None
